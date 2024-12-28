@@ -1,0 +1,10 @@
+.dockerignore
+.git
+.devbox
+
+debug/
+target/
+
+**/*.rs.bk
+
+*.pdb
