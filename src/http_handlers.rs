@@ -1,15 +1,24 @@
-use std::collections::{BTreeMap, HashMap};
-use std::env;
-
 use axum::body::Bytes;
-use axum::extract::{Path, Request};
+use axum::extract::Path;
 use axum::http::{HeaderMap, Method, StatusCode};
+use axum::Json;
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::BTreeMap;
+use std::env;
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct NatsRequest {
+    origin_reply_to: String,
     headers: BTreeMap<String, String>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NatsReponse {
+    user_name: String,
 }
 
 pub async fn handler(
@@ -17,7 +26,7 @@ pub async fn handler(
     path: Path<String>,
     headers: HeaderMap,
     body: Bytes,
-) -> (StatusCode, Bytes) {
+) -> (StatusCode, Json<NatsReponse>) {
     let host = env::var("NATS_SERVICE_HOST").unwrap();
     let port = env::var("NATS_SERVICE_PORT").unwrap();
     let nats_url = format!("nats://{host}:{port}");
@@ -32,7 +41,10 @@ pub async fn handler(
 
     println!("subject: {subject}");
 
+    let inbox = client.new_inbox();
+
     let payload = NatsRequest {
+        origin_reply_to: inbox.clone(),
         headers: headers
             .iter()
             .map(|(header_name, header_value)| {
@@ -46,9 +58,18 @@ pub async fn handler(
 
     let bytes = serde_json::to_vec(&json!(payload)).unwrap();
 
-    let response = client.request(subject, bytes.into()).await;
+    let mut subscription = client.subscribe(inbox.clone()).await.unwrap();
+
+    let _ = client
+        .publish_with_reply(subject, inbox, bytes.into())
+        .await;
+
+    let message = subscription.next().await.unwrap();
+    let result: NatsReponse = serde_json::from_slice(&message.payload.slice(..)).unwrap();
+
+    let _ = subscription.unsubscribe().await;
 
     println!("sent request");
 
-    (StatusCode::CREATED, body)
+    (StatusCode::CREATED, Json(result))
 }
