@@ -1,4 +1,3 @@
-use axum::body::Bytes;
 use axum::extract::Path;
 use axum::http::{HeaderMap, Method, StatusCode};
 use futures::StreamExt;
@@ -12,6 +11,7 @@ use std::env;
 struct NatsRequest {
     origin_reply_to: String,
     headers: BTreeMap<String, String>,
+    body: Value,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -26,7 +26,7 @@ pub async fn handler(
     method: Method,
     path: Path<String>,
     headers: HeaderMap,
-    body: Bytes,
+    axum::Json(body): axum::Json<Value>,
 ) -> (StatusCode, String) {
     let host = env::var("NATS_SERVICE_HOST").unwrap();
     let port = env::var("NATS_SERVICE_PORT").unwrap();
@@ -36,9 +36,7 @@ pub async fn handler(
 
     println!("connected to nats");
 
-    let subject_path = &path.split('/').collect::<Vec<&str>>().join(".");
-    let lowercase_method = method.to_string().to_lowercase();
-    let subject = format!("{lowercase_method}.{subject_path}");
+    let subject = create_subject(method, path);
 
     println!("subject: {subject}");
 
@@ -55,6 +53,7 @@ pub async fn handler(
                 )
             })
             .collect(),
+        body: body,
     };
 
     let bytes = serde_json::to_vec(&json!(payload)).unwrap();
@@ -76,4 +75,11 @@ pub async fn handler(
         StatusCode::from_u16(result.status_code).unwrap(),
         result.body.to_string(),
     )
+}
+
+fn create_subject(method: Method, path: Path<String>) -> String {
+    let subject_path = &path.split('/').collect::<Vec<&str>>().join(".");
+    let lowercase_method = method.to_string().to_lowercase();
+    let subject = format!("{lowercase_method}.{subject_path}");
+    subject
 }
