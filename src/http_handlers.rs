@@ -1,10 +1,9 @@
 use axum::body::Bytes;
 use axum::extract::Path;
 use axum::http::{HeaderMap, Method, StatusCode};
-use axum::Json;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::env;
 
@@ -18,7 +17,9 @@ struct NatsRequest {
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NatsReponse {
-    user_name: String,
+    headers: BTreeMap<String, String>,
+    body: Value,
+    status_code: u16,
 }
 
 pub async fn handler(
@@ -26,7 +27,7 @@ pub async fn handler(
     path: Path<String>,
     headers: HeaderMap,
     body: Bytes,
-) -> (StatusCode, Json<NatsReponse>) {
+) -> (StatusCode, String) {
     let host = env::var("NATS_SERVICE_HOST").unwrap();
     let port = env::var("NATS_SERVICE_PORT").unwrap();
     let nats_url = format!("nats://{host}:{port}");
@@ -71,5 +72,8 @@ pub async fn handler(
 
     println!("sent request");
 
-    (StatusCode::CREATED, Json(result))
+    (
+        StatusCode::from_u16(result.status_code).unwrap(),
+        result.body.to_string(),
+    )
 }
