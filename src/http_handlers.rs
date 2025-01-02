@@ -53,7 +53,10 @@ pub async fn handler(
                 )
             })
             .collect(),
-        body: serde_json::from_str::<Value>(&body).unwrap(),
+        body: match body.is_empty() {
+            true => Value::String("".to_string()),
+            false => serde_json::from_str::<Value>(&body).unwrap(),
+        },
     };
 
     let bytes = serde_json::to_vec(&json!(payload)).unwrap();
