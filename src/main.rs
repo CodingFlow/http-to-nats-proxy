@@ -1,19 +1,22 @@
 use axum::{routing::get, Router};
 use tokio::signal;
+use tower_http::cors::CorsLayer;
 
 mod http_handlers;
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new().route(
-        "/*key",
-        get(http_handlers::handler)
-            .post(http_handlers::handler)
-            .put(http_handlers::handler)
-            .patch(http_handlers::handler)
-            .head(http_handlers::handler)
-            .delete(http_handlers::handler),
-    );
+    let app = Router::new()
+        .route(
+            "/*key",
+            get(http_handlers::handler)
+                .post(http_handlers::handler)
+                .put(http_handlers::handler)
+                .patch(http_handlers::handler)
+                .head(http_handlers::handler)
+                .delete(http_handlers::handler),
+        )
+        .layer(CorsLayer::permissive());
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();

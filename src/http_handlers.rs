@@ -26,7 +26,7 @@ pub async fn handler(
     method: Method,
     path: Path<String>,
     headers: HeaderMap,
-    axum::Json(body): axum::Json<Value>,
+    body: String,
 ) -> (StatusCode, String) {
     let host = env::var("NATS_SERVICE_HOST").unwrap();
     let port = env::var("NATS_SERVICE_PORT").unwrap();
@@ -53,7 +53,7 @@ pub async fn handler(
                 )
             })
             .collect(),
-        body: body,
+        body: serde_json::from_str::<Value>(&body).unwrap(),
     };
 
     let bytes = serde_json::to_vec(&json!(payload)).unwrap();
