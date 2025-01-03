@@ -16,7 +16,7 @@ For example, `GET /animals/dog` becomes `get.animals.dog`.
 
 JSON in the following format:
 
-```json
+```typescript
 {
     originReplyTo: String,
     headers: Map<String, String>,
@@ -47,7 +47,7 @@ Example:
 
 JSON in the following format:
 
-```json
+```typescript
 {
     headers: Map<String, String>,
     body: Value,
