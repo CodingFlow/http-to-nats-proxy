@@ -18,13 +18,13 @@ JSON in the following format:
 
 ```json
 {
-    origin_reply_to: String,
+    originReplyTo: String,
     headers: Map<String, String>,
     body: Value,
 }
 ```
 
-- `origin_reply_to` - NATS inbox reply subject.
+- `originReplyTo` - NATS inbox reply subject.
 - `headers` - HTTP headers sent in request.
 - `body` - Request body.
 
