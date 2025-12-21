@@ -8,7 +8,7 @@ mod http_handlers;
 async fn main() {
     let app = Router::new()
         .route(
-            "/*key",
+            "/{*key}",
             get(http_handlers::handler)
                 .post(http_handlers::handler)
                 .put(http_handlers::handler)
