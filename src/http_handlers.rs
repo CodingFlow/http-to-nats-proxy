@@ -59,20 +59,26 @@ pub async fn handler(
         },
     };
 
+    let mut nats_headers = async_nats::HeaderMap::new();
+    let unique_id = nuid::next();
+    nats_headers.append(async_nats::header::NATS_MESSAGE_ID, unique_id.as_str());
+
     let bytes = serde_json::to_vec(&json!(payload)).unwrap();
 
     let mut subscription = client.subscribe(inbox.clone()).await.unwrap();
 
     let _ = client
-        .publish_with_reply(subject, inbox, bytes.into())
+        .publish_with_reply_and_headers(subject, inbox, nats_headers, bytes.into())
         .await;
+
+    println!("sent request");
 
     let message = subscription.next().await.unwrap();
     let result: NatsReponse = serde_json::from_slice(&message.payload.slice(..)).unwrap();
 
     let _ = subscription.unsubscribe().await;
 
-    println!("sent request");
+    println!("received response");
 
     (
         StatusCode::from_u16(result.status_code).unwrap(),
