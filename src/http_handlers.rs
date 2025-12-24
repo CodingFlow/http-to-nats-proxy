@@ -1,9 +1,9 @@
-use axum::extract::Path;
+use axum::extract::{Path, Query};
 use axum::http::{HeaderMap, Method, StatusCode};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::AppState;
 
@@ -12,6 +12,7 @@ use crate::AppState;
 struct NatsRequest {
     origin_reply_to: String,
     headers: BTreeMap<String, String>,
+    query_parameters: HashMap<String, String>,
     body: Value,
 }
 
@@ -27,6 +28,7 @@ pub async fn handler(
     axum::extract::State(shared_state): axum::extract::State<AppState>,
     method: Method,
     path: Path<String>,
+    Query(query_parameters): Query<HashMap<String, String>>,
     headers: HeaderMap,
     body: String,
 ) -> (StatusCode, String) {
@@ -48,6 +50,7 @@ pub async fn handler(
                 )
             })
             .collect(),
+        query_parameters,
         body: match body.is_empty() {
             true => Value::String("".to_string()),
             false => serde_json::from_str::<Value>(&body).unwrap(),
