@@ -4,7 +4,8 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
-use std::env;
+
+use crate::AppState;
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,19 +24,13 @@ pub struct NatsReponse {
 }
 
 pub async fn handler(
+    axum::extract::State(shared_state): axum::extract::State<AppState>,
     method: Method,
     path: Path<String>,
     headers: HeaderMap,
     body: String,
 ) -> (StatusCode, String) {
-    let host = env::var("NATS_SERVICE_HOST").unwrap();
-    let port = env::var("NATS_SERVICE_PORT").unwrap();
-    let nats_url = format!("nats://{host}:{port}");
-
-    let client = async_nats::connect(nats_url).await.unwrap();
-
-    println!("connected to nats");
-
+    let client = shared_state.client;
     let subject = create_subject(method, path);
 
     println!("subject: {subject}");

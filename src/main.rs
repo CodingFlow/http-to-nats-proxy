@@ -1,11 +1,28 @@
-use axum::{routing::get, Router};
+use std::env;
+
+use axum::{Router, routing::get};
 use tokio::signal;
 use tower_http::cors::CorsLayer;
 
 mod http_handlers;
 
+#[derive(Clone)]
+struct AppState{
+    client: async_nats::Client
+}
+
 #[tokio::main]
 async fn main() {
+    let host = env::var("NATS_SERVICE_HOST").unwrap();
+    let port = env::var("NATS_SERVICE_PORT").unwrap();
+    let nats_url = format!("nats://{host}:{port}");
+
+    let client = async_nats::connect(nats_url).await.unwrap();
+
+    println!("connected to nats");
+
+    let shared_state = AppState {client: client};
+    
     let app = Router::new()
         .route(
             "/{*key}",
@@ -16,6 +33,7 @@ async fn main() {
                 .head(http_handlers::handler)
                 .delete(http_handlers::handler),
         )
+        .with_state(shared_state)
         .layer(CorsLayer::permissive());
 
     // run our app with hyper, listening globally on port 3000
