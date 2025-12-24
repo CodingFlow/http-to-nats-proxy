@@ -52,7 +52,7 @@ pub async fn handler(
             .collect(),
         query_parameters,
         body: match body.is_empty() {
-            true => Value::String("".to_string()),
+            true => Value::Object(serde_json::Map::new()),
             false => serde_json::from_str::<Value>(&body).unwrap(),
         },
     };
