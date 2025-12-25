@@ -1,5 +1,7 @@
+use axum::body::Body;
 use axum::extract::{Path, Query};
-use axum::http::{HeaderMap, Method, StatusCode};
+use axum::http::{HeaderMap, Method, header};
+use axum::response::Response;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -31,7 +33,7 @@ pub async fn handler(
     Query(query_parameters): Query<HashMap<String, String>>,
     headers: HeaderMap,
     body: String,
-) -> (StatusCode, String) {
+) -> Response {
     let client = shared_state.client;
     let subject = create_subject(method, path);
 
@@ -77,11 +79,22 @@ pub async fn handler(
     let _ = subscription.unsubscribe().await;
 
     println!("received response");
+    println!("status code: {0}", result.status_code);
+    println!("body: {0}", result.body.to_string());
 
-    (
-        StatusCode::from_u16(result.status_code).unwrap(),
-        result.body.to_string(),
-    )
+    let result_body_string = result.body.to_string();
+    let http_response_body = if result_body_string == "{}" {
+        println!("body is empty!");
+        Body::empty()
+    } else {
+        Body::from(result_body_string)
+    };
+    
+    Response::builder()
+        .status(result.status_code)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(http_response_body)
+        .unwrap()
 }
 
 fn create_subject(method: Method, path: Path<String>) -> String {
