@@ -60,8 +60,9 @@ pub async fn handler(
     };
 
     let mut nats_headers = async_nats::HeaderMap::new();
-    let unique_id = nuid::next();
-    nats_headers.append(async_nats::header::NATS_MESSAGE_ID, unique_id.as_str());
+    let request_id = headers.get("x-request-id").unwrap().to_str().unwrap();
+    println!("x-request-id: {request_id}");
+    nats_headers.append(async_nats::header::NATS_MESSAGE_ID, request_id);
 
     let bytes = serde_json::to_vec(&json!(payload)).unwrap();
 
