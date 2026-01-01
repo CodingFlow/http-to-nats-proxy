@@ -17,20 +17,18 @@ struct AppState{
 
 #[tokio::main]
 async fn main() {
+    let _guard = Logger::from_env(Some("OTEL_")).unwrap()
+        .with_format(LogFormat::Json)
+        .init()
+        .expect("Failed to initialize tracing");
+
     let host = env::var("NATS_SERVICE_HOST").unwrap();
     let port = env::var("NATS_SERVICE_PORT").unwrap();
     let nats_url = format!("nats://{host}:{port}");
 
     let client = async_nats::connect(nats_url).await.unwrap();
 
-    println!("connected to nats");
-
     let shared_state = AppState {client: client};
-
-    let _guard = Logger::from_env(Some("OTEL_")).unwrap()
-        .with_format(LogFormat::Json)
-        .init()
-        .expect("Failed to initialize tracing");
     
     let app = Router::new()
         .route(

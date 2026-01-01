@@ -37,7 +37,7 @@ pub async fn handler(
     let client = shared_state.client;
     let subject = create_subject(method, path);
 
-    println!("subject: {subject}");
+    tracing::info!(subject);
 
     let inbox = client.new_inbox();
 
@@ -72,20 +72,18 @@ pub async fn handler(
         .publish_with_reply_and_headers(subject, inbox, nats_headers, bytes.into())
         .await;
 
-    println!("sent request");
+    tracing::info!("sent request");
 
     let message = subscription.next().await.unwrap();
     let result: NatsReponse = serde_json::from_slice(&message.payload.slice(..)).unwrap();
 
     let _ = subscription.unsubscribe().await;
 
-    println!("received response");
-    println!("status code: {0}", result.status_code);
-    println!("body: {0}", result.body.to_string());
+    tracing::info!(result.status_code, "received response");
+    tracing::debug!("body: {0}", result.body.to_string());
 
     let result_body_string = result.body.to_string();
     let http_response_body = if result_body_string == "{}" {
-        println!("body is empty!");
         Body::empty()
     } else {
         Body::from(result_body_string)
