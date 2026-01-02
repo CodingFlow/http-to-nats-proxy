@@ -4,6 +4,7 @@ use axum::http::{HeaderMap, Method, header};
 use axum::response::Response;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
+use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use tracing_otel_extra::opentelemetry::global::get_text_map_propagator;
 use tracing_otel_extra::opentelemetry::propagation::Injector;
@@ -14,11 +15,12 @@ use crate::AppState;
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct NatsRequest {
+struct NatsRequest<'a> {
     origin_reply_to: String,
     headers: BTreeMap<String, String>,
     query_parameters: HashMap<String, String>,
-    body: Value,
+    #[serde(borrow)]
+    body: &'a RawValue,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -35,7 +37,7 @@ pub async fn handler(
     path: Path<String>,
     Query(query_parameters): Query<HashMap<String, String>>,
     headers: HeaderMap,
-    body: String,
+    body: axum::body::Bytes,
 ) -> Response {
     let client = shared_state.client;
     let subject = create_subject(method, path);
@@ -57,8 +59,8 @@ pub async fn handler(
             .collect(),
         query_parameters,
         body: match body.is_empty() {
-            true => Value::Object(serde_json::Map::new()),
-            false => serde_json::from_str::<Value>(&body).unwrap(),
+            true => serde_json::from_str("{}").unwrap(),
+            false => serde_json::from_slice(&body).unwrap(),
         },
     };
 
