@@ -25,9 +25,10 @@ struct NatsRequest<'a> {
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NatsReponse {
+pub struct NatsReponse<'a> {
     headers: BTreeMap<String, String>,
-    body: Value,
+    #[serde(borrow)]
+    body: &'a RawValue,
     status_code: u16,
 }
 
@@ -85,18 +86,19 @@ pub async fn handler(
     tracing::info!("sent request");
 
     let message = subscription.next().await.unwrap();
-    let result: NatsReponse = serde_json::from_slice(&message.payload.slice(..)).unwrap();
+    let response_payload = message.payload;
+    let result: NatsReponse = serde_json::from_slice(&response_payload).unwrap();
 
     let _ = subscription.unsubscribe().await;
 
     tracing::info!(result.status_code, "received response");
-    tracing::debug!("body: {0}", result.body.to_string());
+    tracing::debug!("body: {0}", result.body.get());
 
-    let result_body_string = result.body.to_string();
+    let result_body_string = result.body.get();
     let http_response_body = if result_body_string == "{}" {
         Body::empty()
     } else {
-        Body::from(result_body_string)
+        Body::from(result_body_string.to_string())
     };
     
     Response::builder()
