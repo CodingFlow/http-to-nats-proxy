@@ -5,6 +5,9 @@ use axum::response::Response;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tracing_otel_extra::opentelemetry::global::get_text_map_propagator;
+use tracing_otel_extra::opentelemetry::propagation::Injector;
+use tracing_otel_extra::tracing_opentelemetry::OpenTelemetrySpanExt;
 use std::collections::{BTreeMap, HashMap};
 
 use crate::AppState;
@@ -64,6 +67,11 @@ pub async fn handler(
     println!("x-request-id: {request_id}");
     nats_headers.append(async_nats::header::NATS_MESSAGE_ID, request_id);
 
+    let context = tracing::Span::current().context();
+    get_text_map_propagator(|propagator| {
+        propagator.inject_context(&context, &mut MyNatsInjector(&mut nats_headers));
+    });
+
     let bytes = serde_json::to_vec(&json!(payload)).unwrap();
 
     let mut subscription = client.subscribe(inbox.clone()).await.unwrap();
@@ -101,4 +109,12 @@ fn create_subject(method: Method, path: Path<String>) -> String {
     let lowercase_method = method.to_string().to_lowercase();
     let subject = format!("{lowercase_method}.{subject_path}");
     subject
+}
+
+struct MyNatsInjector<'a>(&'a mut async_nats::HeaderMap);
+
+impl<'a> Injector for MyNatsInjector<'a> {
+    fn set(&mut self, key: &str, value: String) {
+        self.0.insert(key, value);
+    }
 }
