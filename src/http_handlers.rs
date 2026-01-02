@@ -5,7 +5,7 @@ use axum::response::Response;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
-use serde_json::{json, Value};
+use serde_json::json;
 use tracing_otel_extra::opentelemetry::global::get_text_map_propagator;
 use tracing_otel_extra::opentelemetry::propagation::Injector;
 use tracing_otel_extra::tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -109,7 +109,7 @@ pub async fn handler(
 }
 
 fn create_subject(method: Method, path: Path<String>) -> String {
-    let subject_path = &path.split('/').collect::<Vec<&str>>().join(".");
+    let subject_path = &path.replace('/', ".");
     let lowercase_method = method.to_string().to_lowercase();
     let subject = format!("{lowercase_method}.{subject_path}");
     subject
