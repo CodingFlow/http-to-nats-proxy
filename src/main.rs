@@ -3,7 +3,7 @@ use std::env;
 use axum::{Router, routing::get};
 use axum_otel::{AxumOtelOnFailure, AxumOtelOnResponse, AxumOtelSpanCreator};
 use tokio::signal;
-use tower_http::{cors::CorsLayer, request_id::MakeRequestId, trace::TraceLayer};
+use tower_http::{cors::CorsLayer, request_id::{MakeRequestId, PropagateRequestIdLayer, SetRequestIdLayer}, trace::TraceLayer};
 use tracing::Level;
 use tracing_otel_extra::{LogFormat, Logger};
 use uuid::Uuid;
@@ -43,14 +43,14 @@ async fn main() {
         .with_state(shared_state)
         .layer(
             tower::ServiceBuilder::new()
-                // .layer(SetRequestIdLayer::x_request_id(MakeRequestUuidV7))
+                .layer(SetRequestIdLayer::x_request_id(MakeRequestUuidV7))
                 .layer(
                     TraceLayer::new_for_http()
                         .make_span_with(AxumOtelSpanCreator::new().level(Level::INFO))
                         .on_response(AxumOtelOnResponse::new().level(Level::INFO))
                         .on_failure(AxumOtelOnFailure::new().level(Level::ERROR)),
                 )
-                // .layer(PropagateRequestIdLayer::x_request_id()),
+                .layer(PropagateRequestIdLayer::x_request_id()),
         )
         .layer(CorsLayer::permissive());
 
